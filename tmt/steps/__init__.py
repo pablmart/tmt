@@ -1256,6 +1256,11 @@ class Login(Action):
     def go(self) -> None:
         """ Login to the guest(s) """
 
+        # Skip to log into the guest if option '--test' is specified as
+        # it is unnecessary to log into the guest more than one time
+        if self.opt('test'):
+            return
+
         if self._enabled_by_results(self.parent.plan.execute.results()):
             self._login()
 
