@@ -148,30 +148,31 @@ def main() -> None:
     tmt.plugins.explore(logger)
 
     if step_name == 'discover':
-        plugin_generator = _create_step_plugin_iterator(
-            tmt.steps.discover.DiscoverPlugin._supported_methods)
+        parent_class = tmt.steps.discover.DiscoverPlugin
+        plugin_generator = _create_step_plugin_iterator(parent_class._supported_methods)
 
     elif step_name == 'execute':
-        plugin_generator = _create_step_plugin_iterator(
-            tmt.steps.execute.ExecutePlugin._supported_methods)
+        parent_class = tmt.steps.execute.ExecutePlugin
+        plugin_generator = _create_step_plugin_iterator(parent_class._supported_methods)
 
     elif step_name == 'finish':
-        plugin_generator = _create_step_plugin_iterator(
-            tmt.steps.finish.FinishPlugin._supported_methods)
+        parent_class = tmt.steps.finish.FinishPlugin
+        plugin_generator = _create_step_plugin_iterator(parent_class._supported_methods)
 
     elif step_name == 'prepare':
-        plugin_generator = _create_step_plugin_iterator(
-            tmt.steps.prepare.PreparePlugin._supported_methods)
+        parent_class = tmt.steps.prepare.PreparePlugin
+        plugin_generator = _create_step_plugin_iterator(parent_class._supported_methods)
 
     elif step_name == 'provision':
-        plugin_generator = _create_step_plugin_iterator(
-            tmt.steps.provision.ProvisionPlugin._supported_methods)
+        parent_class = tmt.steps.provision.ProvisionPlugin
+        plugin_generator = _create_step_plugin_iterator(parent_class._supported_methods)
 
     elif step_name == 'report':
-        plugin_generator = _create_step_plugin_iterator(
-            tmt.steps.report.ReportPlugin._supported_methods)
+        parent_class = tmt.steps.report.ReportPlugin
+        plugin_generator = _create_step_plugin_iterator(parent_class._supported_methods)
 
     elif step_name == 'test-checks':
+        parent_class = tmt.checks.CheckPlugin
         plugin_generator = _create_test_check_plugin_iterator(tmt.checks._CHECK_PLUGIN_REGISTRY)
 
     else:
@@ -182,6 +183,7 @@ def main() -> None:
         template_filepath,
         LOGGER=logger,
         STEP=step_name,
+        PARENT=parent_class,
         PLUGINS=plugin_generator,
         REVIEWED_PLUGINS=REVIEWED_PLUGINS,
         container_fields=tmt.utils.container_fields,
