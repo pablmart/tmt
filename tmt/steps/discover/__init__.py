@@ -149,8 +149,8 @@ class DiscoverPlugin(tmt.steps.GuestlessPlugin[DiscoverStepDataT, None]):
         """ Log details about the imported plan """
         parent = cast(Optional[tmt.steps.discover.Discover], self.parent)
         if parent and parent.plan._original_plan and \
-                parent.plan._original_plan._remote_plan_fmf_id:
-            remote_plan_id = parent.plan._original_plan._remote_plan_fmf_id
+                parent.plan._original_plan._imported_plan_fmf_id:
+            remote_plan_id = parent.plan._original_plan._imported_plan_fmf_id
             # FIXME: cast() - https://github.com/python/mypy/issues/7981
             # Note the missing Optional for values - to_minimal_dict() would
             # not include unset keys, therefore all values should be valid.
@@ -326,7 +326,7 @@ class Discover(tmt.steps.Step):
         text = listed(len(self.tests(enabled=True)), 'test') + ' selected'
         self.info('summary', text, 'green', shift=1)
         # Test list in verbose mode
-        for test in self.tests(enabled=True):
+        for _, test in self.tests(enabled=True):
             self.verbose(test.name, color='red', shift=2)
 
     def go(self, force: bool = False) -> None:
@@ -364,7 +364,7 @@ class Discover(tmt.steps.Step):
             else:
                 raise GeneralError(f'Unexpected phase in discover step: {phase}')
 
-        for test in self.tests():
+        for _, test in self.tests():
             test.serial_number = self.plan.draw_test_serial_number(test)
 
         # Show fmf identifiers for tests discovered in plan
@@ -373,7 +373,7 @@ class Discover(tmt.steps.Step):
             if self.tests(enabled=True):
                 export_fmf_ids: list[str] = []
 
-                for test in self.tests(enabled=True):
+                for _, test in self.tests(enabled=True):
                     fmf_id = test.fmf_id
 
                     if not fmf_id.url:
@@ -420,21 +420,23 @@ class Discover(tmt.steps.Step):
             self,
             *,
             phase_name: Optional[str] = None,
-            enabled: Optional[bool] = None) -> list['tmt.Test']:
-        def _iter_all_tests() -> Iterator['tmt.Test']:
-            tests = self._failed_tests if self._failed_tests else self._tests
-            for phase_tests in tests.values():
-                yield from phase_tests
+            enabled: Optional[bool] = None) -> list[tuple[str, 'tmt.Test']]:
+        tests = self._failed_tests if self._failed_tests else self._tests
 
-        def _iter_phase_tests() -> Iterator['tmt.Test']:
+        def _iter_all_tests() -> Iterator[tuple[str, 'tmt.Test']]:
+            for phase_name, phase_tests in tests.items():
+                for test in phase_tests:
+                    yield phase_name, test
+
+        def _iter_phase_tests() -> Iterator[tuple[str, 'tmt.Test']]:
             assert phase_name is not None
-            tests = self._failed_tests if self._failed_tests else self._tests
 
-            yield from tests[phase_name]
+            for test in self._tests[phase_name]:
+                yield phase_name, test
 
         iterator = _iter_all_tests if phase_name is None else _iter_phase_tests
 
         if enabled is None:
             return list(iterator())
 
-        return [test for test in iterator() if test.enabled is enabled]
+        return [(phase_name, test) for phase_name, test in iterator() if test.enabled is enabled]

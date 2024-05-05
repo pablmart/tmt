@@ -511,8 +511,7 @@ class ReportReportPortal(tmt.steps.report.ReportPlugin[ReportReportPortalData]):
                 self.data.suite_uuid = suite_uuid
 
             # For each test
-            for test in self.step.plan.discover.tests():
-
+            for _, test in self.step.plan.discover.tests():
                 test_time = self.time()
 
                 results: list[Optional[Result]] = [None]

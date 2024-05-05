@@ -43,6 +43,7 @@ import tmt.identifier
 import tmt.lint
 import tmt.log
 import tmt.plugins
+import tmt.plugins.plan_shapers
 import tmt.result
 import tmt.steps
 import tmt.steps.discover
@@ -712,9 +713,10 @@ class Core(
                  tree: Optional['Tree'] = None,
                  parent: Optional[tmt.utils.Common] = None,
                  logger: tmt.log.Logger,
+                 name: Optional[str] = None,
                  **kwargs: Any) -> None:
         """ Initialize the node """
-        super().__init__(node=node, logger=logger, parent=parent, name=node.name, **kwargs)
+        super().__init__(node=node, logger=logger, parent=parent, name=name or node.name, **kwargs)
 
         self.node = node
         self.tree = tree
@@ -1650,11 +1652,17 @@ class Plan(
     # Optional Login instance attached to the plan for easy login in tmt try
     login: Optional[tmt.steps.Login] = None
 
-    # When fetching remote plans we store links between the original
-    # plan with the fmf id and the imported plan with the content.
-    _imported_plan: Optional['Plan'] = field(default=None, internal=True)
+    # When fetching remote plans or splitting plans, we store links
+    # between the original plan with the fmf id and the imported or
+    # derived plans with the content.
     _original_plan: Optional['Plan'] = field(default=None, internal=True)
-    _remote_plan_fmf_id: Optional[FmfId] = field(default=None, internal=True)
+    _original_plan_fmf_id: Optional[FmfId] = field(default=None, internal=True)
+
+    _imported_plan_fmf_id: Optional[FmfId] = field(default=None, internal=True)
+    _imported_plan: Optional['Plan'] = field(default=None, internal=True)
+
+    _derived_plans: list['Plan'] = field(default_factory=list, internal=True)
+    derived_id: Optional[int] = field(default=None, internal=True)
 
     #: Used by steps to mark invocations that have been already applied to
     #: this plan's phases. Needed to avoid the second evaluation in
@@ -1696,11 +1704,12 @@ class Plan(
         # set, incorrect default value is generated, and the field ends up being
         # set to `None`. See https://github.com/teemtee/tmt/issues/2630.
         self._applied_cli_invocations = []
+        self._derived_plans = []
 
         # Check for possible remote plan reference first
         reference = self.node.get(['plan', 'import'])
         if reference is not None:
-            self._remote_plan_fmf_id = FmfId.from_spec(reference)
+            self._imported_plan_fmf_id = FmfId.from_spec(reference)
 
         # Save the run, prepare worktree and plan data directory
         self.my_run = run
@@ -2102,13 +2111,13 @@ class Plan(
             self._show_additional_keys()
 
         # Show fmf id of the remote plan in verbose mode
-        if (self._original_plan or self._remote_plan_fmf_id) and self.verbosity_level:
+        if (self._original_plan or self._original_plan_fmf_id) and self.verbosity_level:
             # Pick fmf id from the original plan by default, use the
             # current plan in shallow mode when no plans are fetched.
             if self._original_plan is not None:
-                fmf_id = self._original_plan._remote_plan_fmf_id
+                fmf_id = self._original_plan._original_plan_fmf_id
             else:
-                fmf_id = self._remote_plan_fmf_id
+                fmf_id = self._original_plan_fmf_id
 
             echo(tmt.utils.format('import', '', key_color='blue'))
             assert fmf_id is not None  # narrow type
@@ -2378,14 +2387,21 @@ class Plan(
         try:
             for step in self.steps(skip=['finish']):
                 step.go()
-                # Finish plan if no tests found (except dry mode)
-                if (isinstance(step, tmt.steps.discover.Discover) and not step.tests()
-                        and not self.is_dry_run and not step.extract_tests_later):
-                    step.info(
-                        'warning', 'No tests found, finishing plan.',
-                        color='yellow', shift=1)
-                    abort = True
-                    return
+
+                if isinstance(step, tmt.steps.discover.Discover):
+                    tests = step.tests()
+
+                    # Finish plan if no tests found (except dry mode)
+                    if not tests and not self.is_dry_run and not step.extract_tests_later:
+                        step.info(
+                            'warning', 'No tests found, finishing plan.',
+                            color='yellow', shift=1)
+                        abort = True
+                        return
+
+                    if self.my_run and self.reshape(tests):
+                        return
+
                 # Source the plan environment file after prepare and execute step
                 if isinstance(step, (tmt.steps.prepare.Prepare, tmt.steps.execute.Execute)):
                     self._source_plan_environment_file()
@@ -2421,7 +2437,7 @@ class Plan(
     @property
     def is_remote_plan_reference(self) -> bool:
         """ Check whether the plan is a remote plan reference """
-        return self._remote_plan_fmf_id is not None
+        return self._imported_plan_fmf_id is not None
 
     def import_plan(self) -> Optional['Plan']:
         """ Import plan from a remote repository, return a Plan instance """
@@ -2431,8 +2447,8 @@ class Plan(
         if self._imported_plan:
             return self._imported_plan
 
-        assert self._remote_plan_fmf_id is not None  # narrow type
-        plan_id = self._remote_plan_fmf_id
+        assert self._imported_plan_fmf_id is not None  # narrow type
+        plan_id = self._imported_plan_fmf_id
         self.debug(f"Import remote plan '{plan_id.name}' from '{plan_id.url}'.", level=3)
 
         # Clone the whole git repository if executing tests (run is attached)
@@ -2530,6 +2546,30 @@ class Plan(
 
         return self._imported_plan
 
+    def derive_plan(self, derived_id: int, tests: dict[str, list[Test]]) -> 'Plan':
+        derived_plan = Plan(
+            node=self.node,
+            run=self.my_run,
+            logger=self._logger,
+            name=f'{self.name}.{derived_id}')
+
+        derived_plan._original_plan = self
+        derived_plan._original_plan_fmf_id = self.fmf_id
+        self._derived_plans.append(derived_plan)
+
+        derived_plan.discover._tests = tests
+        derived_plan.discover.status('done')
+
+        assert self.discover.workdir is not None
+        assert derived_plan.discover.workdir is not None
+
+        shutil.copytree(self.discover.workdir, derived_plan.discover.workdir, dirs_exist_ok=True)
+
+        for step_name in tmt.steps.STEPS:
+            getattr(derived_plan, step_name).save()
+
+        return derived_plan
+
     def prune(self) -> None:
         """ Remove all uninteresting files from the plan workdir """
 
@@ -2546,6 +2586,23 @@ class Plan(
 
         for step in self.steps(enabled_only=False):
             step.prune(logger=step._logger)
+
+    def reshape(self, tests: list[tuple[str, 'tmt.Test']]) -> bool:
+        for shaper_id in tmt.plugins.plan_shapers._PLAN_SHAPER_PLUGIN_REGISTRY.iter_plugin_ids():
+            shaper = tmt.plugins.plan_shapers._PLAN_SHAPER_PLUGIN_REGISTRY.get_plugin(shaper_id)
+
+            assert shaper is not None  # narrow type
+
+            if not shaper.check(self, tests):
+                self.debug(f"Plan shaper '{shaper_id}' not applicable.")
+                continue
+
+            if self.my_run:
+                self.my_run.swap_plans(self, *shaper.apply(self, tests))
+
+            return True
+
+        return False
 
 
 class StoryPriority(enum.Enum):
@@ -3476,13 +3533,37 @@ class Run(tmt.utils.Common):
         self.remove = self.remove or data.remove
         self.debug(f"Remove workdir when finished: {self.remove}", level=3)
 
-    @property
-    def plans(self) -> list[Plan]:
+    @functools.cached_property
+    def plans(self) -> Sequence[Plan]:
         """ Test plans for execution """
         if self._plans is None:
             assert self.tree is not None  # narrow type
             self._plans = self.tree.plans(run=self, filters=['enabled:true'])
         return self._plans
+
+    @functools.cached_property
+    def plan_queue(self) -> Sequence[Plan]:
+        """
+        A list of plans remaining to be executed.
+
+        It is being populated via :py:attr:`plans`, but eventually,
+        :py:meth:`go` will remove plans from it as they get processed.
+        :py:attr:`plans` will remain untouched and will represent all
+        plans collected.
+        """
+
+        return self.plans[:]
+
+    def swap_plans(self, plan: Plan, *others: Plan) -> None:
+        plans = cast(list[Plan], self.plans)
+        plan_queue = cast(list[Plan], self.plan_queue)
+
+        if plan in plan_queue:
+            plan_queue.remove(plan)
+            plans.remove(plan)
+
+        plan_queue.extend(others)
+        plans.extend(others)
 
     def finish(self) -> None:
         """ Check overall results, return appropriate exit code """
@@ -3647,7 +3728,9 @@ class Run(tmt.utils.Common):
         # Iterate over plans
         crashed_plans: list[tuple[Plan, Exception]] = []
 
-        for plan in self.plans:
+        while self.plan_queue:
+            plan = cast(list[Plan], self.plan_queue).pop(0)
+
             try:
                 plan.go()
 
