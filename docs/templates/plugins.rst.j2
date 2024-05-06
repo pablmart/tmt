@@ -5,7 +5,7 @@
 {{ STEP | replace('-', ' ') | capitalize }} Plugins
 {{ '~' * (8 + (STEP | length)) }}
 
-{% if PARENT.__doc__ %}
+{% if PARENT.__doc__ and not PARENT.__doc__ | regex_search("Common parent of .* plugins") %}
 {{ PARENT.__doc__ | dedent | strip }}
 {% endif %}
 

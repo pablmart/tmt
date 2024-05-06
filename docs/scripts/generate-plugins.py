@@ -147,36 +147,36 @@ def main() -> None:
     # ... explore available plugins...
     tmt.plugins.explore(logger)
 
+    # Prepare the parent class
     if step_name == 'discover':
         parent_class = tmt.steps.discover.DiscoverPlugin
-        plugin_generator = _create_step_plugin_iterator(parent_class._supported_methods)
 
     elif step_name == 'execute':
         parent_class = tmt.steps.execute.ExecutePlugin
-        plugin_generator = _create_step_plugin_iterator(parent_class._supported_methods)
 
     elif step_name == 'finish':
         parent_class = tmt.steps.finish.FinishPlugin
-        plugin_generator = _create_step_plugin_iterator(parent_class._supported_methods)
 
     elif step_name == 'prepare':
         parent_class = tmt.steps.prepare.PreparePlugin
-        plugin_generator = _create_step_plugin_iterator(parent_class._supported_methods)
 
     elif step_name == 'provision':
         parent_class = tmt.steps.provision.ProvisionPlugin
-        plugin_generator = _create_step_plugin_iterator(parent_class._supported_methods)
 
     elif step_name == 'report':
         parent_class = tmt.steps.report.ReportPlugin
-        plugin_generator = _create_step_plugin_iterator(parent_class._supported_methods)
 
     elif step_name == 'test-checks':
         parent_class = tmt.checks.CheckPlugin
-        plugin_generator = _create_test_check_plugin_iterator(tmt.checks._CHECK_PLUGIN_REGISTRY)
 
     else:
         raise tmt.utils.GeneralError(f"Unhandled step name '{step_name}'.")
+
+    # Prepare the plugin generator
+    if step_name == 'test-checks':
+        plugin_generator = _create_test_check_plugin_iterator(tmt.checks._CHECK_PLUGIN_REGISTRY)
+    else:
+        plugin_generator = _create_step_plugin_iterator(parent_class._supported_methods)
 
     # ... and render the template.
     output_filepath.write_text(render_template_file(
