@@ -40,9 +40,13 @@ DEFAULT_PROVISION_TICK = 60  # poll job each minute
 #: Kerberos ticket.
 DEFAULT_API_SESSION_REFRESH = 3600
 
+TMT_MRACK_HW_FILTERS_FILE = Path(
+    os.environ.get(
+        'TMT_MRACK_HW_FILTERS_FILE',
+        'mrack-hw-filters.yaml'))
+
 # Type annotation for "data" package describing a guest instance. Passed
 # between load() and save() calls
-MRACK_CONFIG_FILE = os.environ.get('MRACK_CONFIG_FILE') or 'mrack-hw-filters.yaml'
 
 
 class GuestInspectType(TypedDict):
@@ -203,10 +207,10 @@ class MrackHWNotGroup(MrackHWGroup):
 
 
 def _get_custom_config() -> dict[str, Any]:
-    if Path(MRACK_CONFIG_FILE).is_absolute():
-        config_content = Path(MRACK_CONFIG_FILE).read_text()
+    if TMT_MRACK_HW_FILTERS_FILE.is_absolute():
+        config_content = TMT_MRACK_HW_FILTERS_FILE.read_text()
     else:
-        config_content = (tmt.utils.Config().path / MRACK_CONFIG_FILE).read_text()
+        config_content = (tmt.utils.Config().path / TMT_MRACK_HW_FILTERS_FILE).read_text()
     return tmt.utils.yaml_to_dict(config_content)
 
 
