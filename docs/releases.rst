@@ -30,7 +30,7 @@ specifically created for this purpose instead of 'Test Case ID' field.
 ``tmt try`` now supports :ref:`/stories/cli/try/option/epel` option
 backed by :ref:`prepare/feature</plugins/prepare/feature>` plugin
 
-The :ref:`/stories/cli/try/option/epel` ``tmt try`` supports ``--epel`` option
+``tmt try`` now supports :ref:`/stories/cli/try/option/epel` option.
 
 
 tmt-1.34
