@@ -411,7 +411,7 @@ class Try(tmt.utils.Common):
 
         # tmt run prepare --how feature --epel enabled
         data: _RawPrepareFeatureStepData = {
-            "name": "prepare-tmt-try-epel",
+            "name": "tmt-try-epel",
             'how': 'feature',
             'epel': "enabled",
             }
