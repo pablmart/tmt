@@ -28,7 +28,7 @@ Change of Polarion field to store tmt id. Now using 'tmt ID' field,
 specifically created for this purpose instead of 'Test Case ID' field.
 
 ``tmt try`` now supports :ref:`/stories/cli/try/option/epel` option
-backed by :ref:`prepare/feature<plugins/prepare/feature>` plugin
+backed by :ref:`prepare/feature</plugins/prepare/feature>` plugin
 
 
 tmt-1.34
