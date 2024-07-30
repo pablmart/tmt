@@ -31,7 +31,7 @@ specifically created for this purpose instead of 'Test Case ID' field.
 backed by :ref:`prepare/feature</plugins/prepare/feature>` plugin
 
 ``tmt try`` now supports :ref:`/stories/cli/try/option/install` option
-backed by :ref:`prepare/feature<plugins/prepare/install>` plugin
+backed by :ref:`prepare/feature</plugins/prepare/install>` plugin
 
 
 tmt-1.34
