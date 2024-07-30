@@ -428,7 +428,7 @@ class Try(tmt.utils.Common):
 
         # tmt run prepare --how install --package PACKAGE
         data: _RawPrepareInstallStepData = {
-            "name": "prepare-tmt-try-install",
+            "name": "tmt-try-install",
             'how': 'install',
             'package': packages,
             }
