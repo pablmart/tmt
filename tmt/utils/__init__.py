@@ -6667,13 +6667,13 @@ def render_rst(text: str, logger: Logger) -> str:
 
 
 def import_jira() -> None:
-    """ Import polarion Python Jira library """
+    """ Import Python Jira library """
     try:
         global JIRA
         from jira import JIRA
     except ImportError:
         raise GeneralError(
-            "Install 'tmt+link-jira' to use the Jira linking")
+            "Install 'tmt+link-jira' to use the Jira linking.")
 
 
 def jira_link(
