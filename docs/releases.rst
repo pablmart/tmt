@@ -7,6 +7,12 @@
 tmt-1.37
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+The :ref:`/plugins/report/junit` report plugin now supports a new
+``subresults`` JUnit flavor. This flavor adds support for TMT subresults and
+changes the level of ``<testsuite>`` and ``<testcase>`` tags. The
+``tmt.Result`` tags become ``<testsuite>`` (instead of ``testcase``) and
+``<testcase>`` tags become ``tmt.SubResult``.
+
 The :ref:`/plugins/report/junit` report plugin now validates all the XML
 flavors against their respective XSD schemas and tries to prettify the final
 XML output. These functionalities are always disabled for ``custom`` flavors.
