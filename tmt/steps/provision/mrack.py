@@ -20,7 +20,6 @@ from tmt.utils import (
     ProvisionError,
     ShellScript,
     UpdatableMessage,
-    _normalize_user_data,
     field,
     )
 
@@ -768,7 +767,7 @@ class BeakerGuestData(tmt.steps.provision.GuestSshData):
         metavar='KEY=VALUE',
         help='Optional Beaker kickstart to use when provisioning the guest.',
         multiple=True,
-        normalize=_normalize_user_data)
+        normalize=tmt.utils.normalize_dict)
 
 
 @dataclasses.dataclass
