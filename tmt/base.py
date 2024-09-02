@@ -3555,6 +3555,13 @@ class Run(tmt.utils.Common):
         return self.plans[:]
 
     def swap_plans(self, plan: Plan, *others: Plan) -> None:
+        """
+        Replace given plan with one or more plans.
+
+        :param plan: a plan to remove.
+        :param others: plans to put into the queue instead of ``plans``.
+        """
+
         plans = cast(list[Plan], self.plans)
         plan_queue = cast(list[Plan], self.plan_queue)
 

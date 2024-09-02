@@ -421,22 +421,23 @@ class Discover(tmt.steps.Step):
             *,
             phase_name: Optional[str] = None,
             enabled: Optional[bool] = None) -> list[tuple[str, 'tmt.Test']]:
-        tests = self._failed_tests if self._failed_tests else self._tests
+        suitable_tests = self._failed_tests if self._failed_tests else self._tests
+        suitable_phases = [phase_name] if phase_name is not None else list(self._tests.keys())
 
-        def _iter_all_tests() -> Iterator[tuple[str, 'tmt.Test']]:
-            for phase_name, phase_tests in tests.items():
+        def _iter_tests() -> Iterator[tuple[str, 'tmt.Test']]:
+            # PLR1704: this redefinition of `phase_name` is acceptable, the original
+            # value is not longer needed as it has been turned into `suitable_phases`.
+            for phase_name, phase_tests in suitable_tests.items():  # noqa: PLR1704
+                if phase_name not in suitable_phases:
+                    continue
+
                 for test in phase_tests:
                     yield phase_name, test
 
-        def _iter_phase_tests() -> Iterator[tuple[str, 'tmt.Test']]:
-            assert phase_name is not None
-
-            for test in self._tests[phase_name]:
-                yield phase_name, test
-
-        iterator = _iter_all_tests if phase_name is None else _iter_phase_tests
-
         if enabled is None:
-            return list(iterator())
+            return list(_iter_tests())
 
-        return [(phase_name, test) for phase_name, test in iterator() if test.enabled is enabled]
+        return [
+            (phase_name, test)
+            for phase_name, test in _iter_tests()
+            if test.enabled is enabled]
