@@ -323,7 +323,9 @@ class ExecuteInternal(tmt.steps.execute.ExecutePlugin[ExecuteInternalData]):
         logger.debug('test wrapper', test_wrapper_filepath)
 
         # Prepare the test command
-        test_command = test.test_framework.get_test_command(invocation, logger)
+        # Add a message in dmesg stating which test are we executing
+        test_command = ShellScript(f'echo "tmt: Executing {test.name}" > /dev/kmsg')
+        test_command += test.test_framework.get_test_command(invocation, logger)
         self.debug('Test script', test_command, level=3)
 
         # Prepare the wrapper, push to guest
