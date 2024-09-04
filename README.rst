@@ -1,19 +1,15 @@
 
-pablmart: This fork of 1.35.0 adds something needed to debug
+*pablmart*: This fork of 1.35.0 adds something needed to debug
 some long-running tmt plans; logging the test name before
 execution in the kernel logs (dmesg)
 
-To install this version, do:
+To install this version, do::
 
-```
-pip install -I -U git+https://github.com/pablmart/tmt.git@1.35.0.dmesglogging
-```
+    pip install -I -U git+https://github.com/pablmart/tmt.git@1.35.0.dmesglogging
 
-If you have a system-wide tmt installed, run this version with
+If you have a system-wide tmt installed, run this version with::
 
-```
-~/.local/bin/tmt <options ...>
-```
+    ~/.local/bin/tmt <options ...>
 
 Original README follows:
 
